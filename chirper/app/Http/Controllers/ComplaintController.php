@@ -10,7 +10,7 @@ class ComplaintController extends Controller
 {
     public function index()
     {
-        $complaints = Complaint::where('user_id', Auth::id())->get();
+        $complaints = Complaint::latest()->get();
         return view('complaints.index', compact('complaints'));
     }
 
@@ -18,23 +18,22 @@ class ComplaintController extends Controller
     {
         return view('complaints.create');
     }
-
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
+            'status' => 'required|in:Pending,Resolved,Rejected',
         ]);
 
-        Complaint::create([
-            'user_id' => Auth::id(),
-            'title' => $request->title,
-            'description' => $request->description,
-            'status' => 'Pending',
-        ]);
+        // Attach the logged-in user's ID
+        $validated['user_id'] = Auth::id();
+
+        Complaint::create($validated);
 
         return redirect()->route('complaints.index')->with('success', 'Complaint submitted successfully.');
     }
+
 
     public function edit(Complaint $complaint)
     {
@@ -43,24 +42,42 @@ class ComplaintController extends Controller
 
     public function update(Request $request, Complaint $complaint)
     {
-        $request->validate([
-            'status' => 'required|in:Pending,Resolved,Rejected',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'status' => 'required|string|in:Pending,Resolved,Rejected',
         ]);
 
-        $complaint->update(['status' => $request->status]);
+        $complaint->update($validated);
+
+        // Handle HTMX request
+        if ($request->headers->has('HX-Request')) {
+            return view('complaints.show', compact('complaint'));
+        }
 
         return redirect()->route('complaints.index')->with('success', 'Complaint updated successfully.');
     }
 
-    public function destroy(Complaint $complaint)
+    public function destroy(Request $request, Complaint $complaint)
     {
         $complaint->delete();
+
+        // Handle HTMX request
+        if ($request->headers->has('HX-Request')) {
+            return response()->json(['success' => true]);
+        }
+
         return redirect()->route('complaints.index')->with('success', 'Complaint deleted successfully.');
     }
 
     public function show($id)
     {
         $complaint = Complaint::findOrFail($id);
+
+        if (request()->headers->has('HX-Request')) {
+            return view('complaints.show', compact('complaint'))->render();
+        }
+
         return view('complaints.show', compact('complaint'));
     }
 }

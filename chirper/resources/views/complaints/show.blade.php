@@ -1,7 +1,9 @@
-@extends('layouts.app')
+@if(!request()->headers->has('HX-Request'))
+    @extends('layouts.app')
+@endif
 
 @section('content')
-<div class="container mt-4">
+<div class="container mt-4" id="main-content">
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow-sm">
@@ -29,8 +31,15 @@
                         <p>{{ $complaint->description }}</p>
                     </div>
 
-                    <!-- Back Button -->
-                    <a href="{{ route('complaints.index') }}" class="btn btn-secondary">Back to Complaints</a>
+                    <!-- Back Button with HTMX -->
+                    <a href="{{ route('complaints.index') }}" 
+                       class="btn btn-secondary"
+                       hx-get="{{ route('complaints.index') }}"
+                       hx-target="#main-content"
+                       hx-push-url="true"
+                       hx-trigger="click">
+                        Back to Complaints
+                    </a>
                 </div>
             </div>
         </div>
